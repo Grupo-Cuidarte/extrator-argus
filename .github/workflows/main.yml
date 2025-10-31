@@ -1,0 +1,43 @@
+name: Extrator Argus
+
+on:
+  workflow_dispatch:
+    inputs:
+      endpoint:
+        description: 'Qual endpoint deseja extrair (tabulacoesdetalhadas, ligacoesdetalhadas ou all)'
+        required: true
+        default: 'all'
+      data_inicial:
+        description: 'Data inicial da extração (formato: AAAA-MM-DD)'
+        required: true
+        default: '2025-10-07'
+      data_final:
+        description: 'Data final da extração (formato: AAAA-MM-DD)'
+        required: true
+        default: '2025-10-17'
+
+jobs:
+  run-extractor:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📦 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: 📚 Install dependencies
+        run: npm install
+
+      - name: 🚀 Run extractor script
+        run: npm start
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          ARGUS_API_TOKEN: ${{ secrets.ARGUS_API_TOKEN }}
+          DATA_INICIAL: ${{ github.event.inputs.data_inicial }}
+          DATA_FINAL: ${{ github.event.inputs.data_final }}
+          ENDPOINT: ${{ github.event.inputs.endpoint }}
