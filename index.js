@@ -167,6 +167,15 @@ async function uploadCsvToStorage(bucketName, fileName, fileContent) {
 async function uploadJsonToTable(tableName, jsonData) {
   console.log(`\n💾 Iniciando upload de ${jsonData.length} registros para a tabela SQL "${tableName}"...`);
   
+  // --- INÍCIO DA ALTERAÇÃO ---
+  // Pega o timestamp de SP *uma vez* por chunk. 
+  // Isso é mais eficiente e garante que todos os registros no lote tenham o mesmo timestamp.
+  const nowInSaoPaulo = new Date().toLocaleString('sv-SE', {
+    timeZone: 'America/Sao_Paulo',
+    hour12: false,
+  });
+  // --- FIM DA ALTERAÇÃO ---
+
   for (let i = 0; i < jsonData.length; i += CHUNK_SIZE) {
     const chunk = jsonData.slice(i, i + CHUNK_SIZE);
     const chunkNumber = (i / CHUNK_SIZE) + 1;
@@ -186,6 +195,12 @@ async function uploadJsonToTable(tableName, jsonData) {
           cleanedRecord[key] = record[key];
         }
       }
+      
+      // --- INÍCIO DA ALTERAÇÃO ---
+      // Adiciona a nova coluna de timestamp de SP em cada registro
+      cleanedRecord.inserterd_at_br = nowInSaoPaulo; 
+      // --- FIM DA ALTERAÇÃO ---
+      
       return cleanedRecord;
     });
     // --- FIM DA CORREÇÃO ---
