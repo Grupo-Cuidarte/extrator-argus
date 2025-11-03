@@ -15,6 +15,16 @@ on:
         description: 'Data final da extração (formato: AAAA-MM-DD)'
         required: true
         default: '2025-10-17'
+      
+      # NOVO: Inputs para HORA
+      hora_inicial:
+        description: 'Hora inicial da extração (formato: HH:MM:SS)'
+        required: false # Mantenha false para usar o default do script
+        default: '00:00:00'
+      hora_final:
+        description: 'Hora final da extração (formato: HH:MM:SS)'
+        required: false # Mantenha false para usar o default do script
+        default: '23:59:59'
 
 jobs:
   run-extractor:
@@ -38,6 +48,12 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           ARGUS_API_TOKEN: ${{ secrets.ARGUS_API_TOKEN }}
+          
+          # Variáveis de ambiente
           DATA_INICIAL: ${{ github.event.inputs.data_inicial }}
           DATA_FINAL: ${{ github.event.inputs.data_final }}
           ENDPOINT: ${{ github.event.inputs.endpoint }}
+          
+          # NOVO: Passando as horas para o script
+          HORA_INICIAL: ${{ github.event.inputs.hora_inicial }}
+          HORA_FINAL: ${{ github.event.inputs.hora_final }}
