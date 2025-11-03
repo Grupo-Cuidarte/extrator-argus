@@ -6,12 +6,14 @@ require('dotenv').config();
 // --- CONFIGURAÇÕES ---
 
 const getYesterday = () => {
+// ... (código existente sem alteração) ...
   const date = new Date();
   date.setDate(date.getDate() - 1);
   return date.toISOString().split('T')[0];
 };
 
 const getSevenDaysAgo = () => {
+// ... (código existente sem alteração) ...
   const date = new Date();
   date.setDate(date.getDate() - 7);
   return date.toISOString().split('T')[0];
@@ -33,12 +35,13 @@ const PERIODO_FINAL = `${dataFinal}T${horaFinal}`;
 const CHUNK_SIZE = 500; 
 
 // --- INICIALIZAÇÃO ---
-// ... (restante do código sem alteração) ...
+// ... (código existente sem alteração) ...
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 const argusApiToken = process.env.ARGUS_API_TOKEN;
 
 if (!supabaseUrl || !supabaseServiceKey || !argusApiToken) {
+// ... (código existente sem alteração) ...
   console.error('❌ Erro: SUPABASE_URL, SUPABASE_SERVICE_KEY e ARGUS_API_TOKEN são obrigatórios.');
   process.exit(1);
 }
@@ -46,8 +49,7 @@ if (!supabaseUrl || !supabaseServiceKey || !argusApiToken) {
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // --- CONFIGURAÇÃO DOS ENDPOINTS ---
-// ALTERADO: Adicionada a chave 'sqlTable' para definir a tabela de destino no SQL.
-// Se 'sqlTable' for null, o upload para SQL será pulado para esse endpoint.
+// ... (código existente sem alteração) ...
 const ENDPOINTS_CONFIG = [
   {
     name: 'tabulacoesdetalhadas',
@@ -79,8 +81,7 @@ async function fetchPaginatedData(endpointConfig) {
   let pageCount = 1;
 
   console.log(`\n📊 Iniciando extração do endpoint "${name}" (${dataField}) para o período ${dataInicial} → ${dataFinal}`);
-// ... (código existente sem alteração) ...
-// ... (Esta função continua idêntica) ...
+
   const headers = { 'Token-Signature': argusApiToken };
 
   do {
@@ -125,7 +126,6 @@ async function fetchPaginatedData(endpointConfig) {
 
 function convertJsonToCsv(jsonData) {
 // ... (código existente sem alteração) ...
-// ... (Esta função continua idêntica) ...
   if (!jsonData?.length) {
     console.log('Nenhum dado para converter para CSV.');
     return null;
@@ -140,10 +140,9 @@ function convertJsonToCsv(jsonData) {
   }
 }
 
-// ALTERADO: Função renomeada (era uploadToSupabase)
+// ... (código existente sem alteração) ...
 async function uploadCsvToStorage(bucketName, fileName, fileContent) {
 // ... (código existente sem alteração) ...
-// ... (Esta função continua idêntica) ...
   console.log(`\n🚀 Enviando arquivo CSV "${fileName}" para bucket "${bucketName}"...`);
 
   const { error } = await supabase.storage
@@ -166,8 +165,6 @@ async function uploadCsvToStorage(bucketName, fileName, fileContent) {
  * @param {Array<Object>} jsonData O array de dados a ser inserido.
  */
 async function uploadJsonToTable(tableName, jsonData) {
-// ... (código existente sem alteração) ...
-// ... (Esta função continua idêntica) ...
   console.log(`\n💾 Iniciando upload de ${jsonData.length} registros para a tabela SQL "${tableName}"...`);
   
   for (let i = 0; i < jsonData.length; i += CHUNK_SIZE) {
@@ -177,12 +174,28 @@ async function uploadJsonToTable(tableName, jsonData) {
 
     console.log(`  -> Enviando chunk ${chunkNumber}/${totalChunks} (${chunk.length} registros)...`);
 
-    // Usamos .insert() para inserir os novos dados
-    // Se precisar evitar duplicatas, considere .upsert() com a 'conflict_column'
+    // --- INÍCIO DA CORREÇÃO ---
+    // Limpa o chunk: converte strings vazias ("") para null.
+    // O Postgres não aceita "" em campos de data/hora, mas aceita null.
+    const cleanedChunk = chunk.map(record => {
+      const cleanedRecord = {};
+      for (const key in record) {
+        if (record[key] === "") {
+          cleanedRecord[key] = null;
+        } else {
+          cleanedRecord[key] = record[key];
+        }
+      }
+      return cleanedRecord;
+    });
+    // --- FIM DA CORREÇÃO ---
+
+
+    // Usamos .insert() com o 'cleanedChunk' agora
     const { error } = await supabase
       .from(tableName)
-      .insert(chunk); 
-      // .upsert(chunk, { onConflict: 'sua_coluna_de_conflito' });
+      .insert(cleanedChunk); // <-- ALTERADO: usa o chunk limpo
+      // .upsert(cleanedChunk, { onConflict: 'sua_coluna_de_conflito' });
 
     if (error) {
       console.error(`❌ Erro ao inserir o chunk ${chunkNumber}:`, error.message);
@@ -199,7 +212,6 @@ async function uploadJsonToTable(tableName, jsonData) {
 
 async function main() {
 // ... (código existente sem alteração) ...
-// ... (Esta função continua idêntica) ...
   const selectedEndpoint = process.env.ENDPOINT || 'all';
   
   const endpointsToRun = 
@@ -208,11 +220,13 @@ async function main() {
       : ENDPOINTS_CONFIG.filter(e => e.name === selectedEndpoint);
 
   if (endpointsToRun.length === 0) {
+// ... (código existente sem alteração) ...
     console.error(`❌ Endpoint inválido: ${selectedEndpoint}`);
     process.exit(1);
   }
 
   for (const endpoint of endpointsToRun) {
+// ... (código existente sem alteração) ...
     console.log(`\n--- Processando Endpoint: ${endpoint.name} ---`);
     try {
       // 1. Buscar dados da API Argus
