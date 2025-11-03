@@ -3,6 +3,7 @@ const axios = require('axios');
 const { Parser } = require('json2csv');
 require('dotenv').config();
 
+// --- CONFIGURAÇÕES ---
 
 const getYesterday = () => {
   const date = new Date();
@@ -19,12 +20,20 @@ const getSevenDaysAgo = () => {
 const dataInicial = process.env.DATA_INICIAL || getSevenDaysAgo();
 const dataFinal = process.env.DATA_FINAL || getYesterday();
 
-const PERIODO_INICIAL = `${dataInicial}T00:00:00`;
-const PERIODO_FINAL = `${dataFinal}T23:59:59`;
+// NOVO: Permite que o orquestrador defina a hora exata.
+// Default é o dia inteiro (00:00:00 até 23:59:59) se não for fornecido.
+const horaInicial = process.env.HORA_INICIAL || '00:00:00';
+const horaFinal = process.env.HORA_FINAL || '23:59:59';
 
+// ALTERADO: Combina data e hora
+const PERIODO_INICIAL = `${dataInicial}T${horaInicial}`;
+const PERIODO_FINAL = `${dataFinal}T${horaFinal}`;
+
+// Define o tamanho dos lotes para inserção no SQL
 const CHUNK_SIZE = 500; 
 
-
+// --- INICIALIZAÇÃO ---
+// ... (restante do código sem alteração) ...
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 const argusApiToken = process.env.ARGUS_API_TOKEN;
@@ -36,6 +45,9 @@ if (!supabaseUrl || !supabaseServiceKey || !argusApiToken) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+// --- CONFIGURAÇÃO DOS ENDPOINTS ---
+// ALTERADO: Adicionada a chave 'sqlTable' para definir a tabela de destino no SQL.
+// Se 'sqlTable' for null, o upload para SQL será pulado para esse endpoint.
 const ENDPOINTS_CONFIG = [
   {
     name: 'tabulacoesdetalhadas',
@@ -55,8 +67,10 @@ const ENDPOINTS_CONFIG = [
   },
 ];
 
+// --- FUNÇÕES DE EXTRAÇÃO (API ARGUS) ---
 
 async function fetchPaginatedData(endpointConfig) {
+// ... (código existente sem alteração) ...
   const { url, dataField, idCampanha, name } = endpointConfig;
 
   let allRecords = [];
@@ -65,7 +79,8 @@ async function fetchPaginatedData(endpointConfig) {
   let pageCount = 1;
 
   console.log(`\n📊 Iniciando extração do endpoint "${name}" (${dataField}) para o período ${dataInicial} → ${dataFinal}`);
-
+// ... (código existente sem alteração) ...
+// ... (Esta função continua idêntica) ...
   const headers = { 'Token-Signature': argusApiToken };
 
   do {
@@ -106,8 +121,11 @@ async function fetchPaginatedData(endpointConfig) {
   return allRecords;
 }
 
+// --- FUNÇÕES DE PROCESSAMENTO E UPLOAD (SUPABASE) ---
 
 function convertJsonToCsv(jsonData) {
+// ... (código existente sem alteração) ...
+// ... (Esta função continua idêntica) ...
   if (!jsonData?.length) {
     console.log('Nenhum dado para converter para CSV.');
     return null;
@@ -124,6 +142,8 @@ function convertJsonToCsv(jsonData) {
 
 // ALTERADO: Função renomeada (era uploadToSupabase)
 async function uploadCsvToStorage(bucketName, fileName, fileContent) {
+// ... (código existente sem alteração) ...
+// ... (Esta função continua idêntica) ...
   console.log(`\n🚀 Enviando arquivo CSV "${fileName}" para bucket "${bucketName}"...`);
 
   const { error } = await supabase.storage
@@ -140,8 +160,14 @@ async function uploadCsvToStorage(bucketName, fileName, fileContent) {
   }
 }
 
-
+/**
+ * NOVO: Função para inserir dados JSON em uma tabela SQL em lotes (chunks).
+ * @param {string} tableName O nome da tabela no Supabase.
+ * @param {Array<Object>} jsonData O array de dados a ser inserido.
+ */
 async function uploadJsonToTable(tableName, jsonData) {
+// ... (código existente sem alteração) ...
+// ... (Esta função continua idêntica) ...
   console.log(`\n💾 Iniciando upload de ${jsonData.length} registros para a tabela SQL "${tableName}"...`);
   
   for (let i = 0; i < jsonData.length; i += CHUNK_SIZE) {
@@ -151,7 +177,9 @@ async function uploadJsonToTable(tableName, jsonData) {
 
     console.log(`  -> Enviando chunk ${chunkNumber}/${totalChunks} (${chunk.length} registros)...`);
 
-    const { error }_ = await supabase
+    // Usamos .insert() para inserir os novos dados
+    // Se precisar evitar duplicatas, considere .upsert() com a 'conflict_column'
+    const { error } = await supabase
       .from(tableName)
       .insert(chunk); 
       // .upsert(chunk, { onConflict: 'sua_coluna_de_conflito' });
@@ -167,8 +195,11 @@ async function uploadJsonToTable(tableName, jsonData) {
 }
 
 
+// --- FUNÇÃO PRINCIPAL ---
 
 async function main() {
+// ... (código existente sem alteração) ...
+// ... (Esta função continua idêntica) ...
   const selectedEndpoint = process.env.ENDPOINT || 'all';
   
   const endpointsToRun = 
@@ -189,12 +220,14 @@ async function main() {
       
       if (data.length > 0) {
         
+        // 2. Tarefa de Upload do CSV para o Storage (como antes)
         const csv = convertJsonToCsv(data);
         if (csv) {
           const fileName = `${endpoint.name}_${dataInicial}_ate_${dataFinal}_${Date.now()}.csv`;
           await uploadCsvToStorage(endpoint.bucket, fileName, csv);
         }
 
+        // 3. NOVO: Tarefa de Upload do JSON para a Tabela SQL
         if (endpoint.sqlTable) {
           await uploadJsonToTable(endpoint.sqlTable, data);
         } else {
@@ -215,3 +248,4 @@ async function main() {
 }
 
 main();
+
