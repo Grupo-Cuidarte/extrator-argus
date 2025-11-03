@@ -3,8 +3,6 @@ const axios = require('axios');
 const { Parser } = require('json2csv');
 require('dotenv').config();
 
-// --- CONFIGURAÇÕES ---
-
 const getYesterday = () => {
 // ... (código existente sem alteração) ...
   const date = new Date();
@@ -167,14 +165,12 @@ async function uploadCsvToStorage(bucketName, fileName, fileContent) {
 async function uploadJsonToTable(tableName, jsonData) {
   console.log(`\n💾 Iniciando upload de ${jsonData.length} registros para a tabela SQL "${tableName}"...`);
   
-  // --- INÍCIO DA ALTERAÇÃO ---
   // Pega o timestamp de SP *uma vez* por chunk. 
   // Isso é mais eficiente e garante que todos os registros no lote tenham o mesmo timestamp.
   const nowInSaoPaulo = new Date().toLocaleString('sv-SE', {
     timeZone: 'America/Sao_Paulo',
     hour12: false,
   });
-  // --- FIM DA ALTERAÇÃO ---
 
   for (let i = 0; i < jsonData.length; i += CHUNK_SIZE) {
     const chunk = jsonData.slice(i, i + CHUNK_SIZE);
@@ -183,11 +179,11 @@ async function uploadJsonToTable(tableName, jsonData) {
 
     console.log(`  -> Enviando chunk ${chunkNumber}/${totalChunks} (${chunk.length} registros)...`);
 
-    // --- INÍCIO DA CORREÇÃO ---
     // Limpa o chunk: converte strings vazias ("") para null.
     // O Postgres não aceita "" em campos de data/hora, mas aceita null.
     const cleanedChunk = chunk.map(record => {
       const cleanedRecord = {};
+      // 1. Limpeza de "" para null
       for (const key in record) {
         if (record[key] === "") {
           cleanedRecord[key] = null;
@@ -196,14 +192,40 @@ async function uploadJsonToTable(tableName, jsonData) {
         }
       }
       
-      // --- INÍCIO DA ALTERAÇÃO ---
-      // Adiciona a nova coluna de timestamp de SP em cada registro
+      // 2. Adiciona a coluna de 'inserção' (horário de SP)
       cleanedRecord.inserterd_at_br = nowInSaoPaulo; 
-      // --- FIM DA ALTERAÇÃO ---
+      
+      // --- INÍCIO DA NOVA ALTERAÇÃO ---
+      // 3. Adiciona a coluna 'DataEventoBR' convertida
+      if (cleanedRecord.dataEvento) { // Checa se o campo não é null (após limpeza)
+        try {
+          // Cria um objeto Date a partir da string UTC (GMT 0)
+          const dateUtc = new Date(cleanedRecord.dataEvento);
+          
+          if (!isNaN(dateUtc)) { // Verifica se a data é válida
+            // Converte a data UTC para o fuso 'America/Sao_Paulo'
+            // O formato 'sv-SE' (YYYY-MM-DD HH:MM:SS) é amigável ao Postgres
+            cleanedRecord.DataEventoBR = dateUtc.toLocaleString('sv-SE', {
+              timeZone: 'America/Sao_Paulo',
+              hour12: false,
+            });
+          } else {
+            // A data vinda da API era inválida
+            cleanedRecord.DataEventoBR = null; 
+          }
+        } catch (e) {
+          // Erro ao tentar processar a data
+          console.warn(`Não foi possível converter dataEvento: ${cleanedRecord.dataEvento}`);
+          cleanedRecord.DataEventoBR = null;
+        }
+      } else {
+        // Se dataEvento for null, DataEventoBR também será null
+        cleanedRecord.DataEventoBR = null; 
+      }
+      // --- FIM DA NOVA ALTERAÇÃO ---
       
       return cleanedRecord;
     });
-    // --- FIM DA CORREÇÃO ---
 
 
     // Usamos .insert() com o 'cleanedChunk' agora
