@@ -196,7 +196,7 @@ async function uploadJsonToTable(tableName, jsonData) {
       cleanedRecord.inserterd_at_br = nowInSaoPaulo; 
       
       // --- INÍCIO DA NOVA ALTERAÇÃO ---
-      // 3. Adiciona a coluna 'DataEventoBR' convertida
+      // 3. Adiciona a coluna 'dataEventoBR' convertida
       if (cleanedRecord.dataEvento) { // Checa se o campo não é null (após limpeza)
         try {
           // Cria um objeto Date a partir da string UTC (GMT 0)
@@ -205,22 +205,22 @@ async function uploadJsonToTable(tableName, jsonData) {
           if (!isNaN(dateUtc)) { // Verifica se a data é válida
             // Converte a data UTC para o fuso 'America/Sao_Paulo'
             // O formato 'sv-SE' (YYYY-MM-DD HH:MM:SS) é amigável ao Postgres
-            cleanedRecord.DataEventoBR = dateUtc.toLocaleString('sv-SE', {
+            cleanedRecord.dataEventoBR = dateUtc.toLocaleString('sv-SE', {
               timeZone: 'America/Sao_Paulo',
               hour12: false,
             });
           } else {
             // A data vinda da API era inválida
-            cleanedRecord.DataEventoBR = null; 
+            cleanedRecord.dataEventoBR = null; 
           }
         } catch (e) {
           // Erro ao tentar processar a data
           console.warn(`Não foi possível converter dataEvento: ${cleanedRecord.dataEvento}`);
-          cleanedRecord.DataEventoBR = null;
+          cleanedRecord.dataEventoBR = null;
         }
       } else {
-        // Se dataEvento for null, DataEventoBR também será null
-        cleanedRecord.DataEventoBR = null; 
+        // Se dataEvento for null, dataEventoBR também será null
+        cleanedRecord.dataEventoBR = null; 
       }
       // --- FIM DA NOVA ALTERAÇÃO ---
       
