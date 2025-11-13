@@ -1,35 +1,20 @@
-name: '[REUTILIZÁVEL] Passo 1 - Extrator Argus'
+name: Extrator Argus
 
 on:
-  workflow_call: # <-- MUDANÇA 1: Alterado para 'workflow_call'
+  workflow_dispatch:
     inputs:
       endpoint:
         description: 'Qual endpoint deseja extrair (tabulacoesdetalhadas, ligacoesdetalhadas ou all)'
         required: true
-        type: string # Adicionado 'type'
-        # <-- MUDANÇA 2: Removido 'default:'
+        default: 'all'
       data_inicial:
         description: 'Data inicial da extração (formato: AAAA-MM-DD)'
         required: true
-        type: string
-        # <-- MUDANÇA 2: Removido 'default:'
+        default: '2025-10-07'
       data_final:
         description: 'Data final da extração (formato: AAAA-MM-DD)'
         required: true
-        type: string
-        # <-- MUDANÇA 2: Removido 'default:'
-      
-      # Inputs para HORA
-      hora_inicial:
-        description: 'Hora inicial da extração (formato: HH:MM:SS)'
-        required: true # <-- MUDANÇA 3: Alterado para 'true' pois o orquestrador sempre passará
-        type: string
-        # <-- MUDANÇA 2: Removido 'default:'
-      hora_final:
-        description: 'Hora final da extração (formato: HH:MM:SS)'
-        required: true # <-- MUDANÇA 3: Alterado para 'true'
-        type: string
-        # <-- MUDANÇA 2: Removido 'default:'
+        default: '2025-10-17'
 
 jobs:
   run-extractor:
@@ -39,7 +24,7 @@ jobs:
       - name: 📦 Checkout repository
         uses: actions/checkout@v4
 
-      - name: ⚙️ Setup Node.js
+      - name:⚙️ Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
@@ -53,13 +38,6 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           ARGUS_API_TOKEN: ${{ secrets.ARGUS_API_TOKEN }}
-          
-          # Variáveis de ambiente
-          # MUDANÇA 4: Sintaxe de 'inputs' corrigida
-          DATA_INICIAL: ${{ inputs.data_inicial }}
-          DATA_FINAL: ${{ inputs.data_final }}
-          ENDPOINT: ${{ inputs.endpoint }}
-          
-          # Passando as horas para o script
-          HORA_INICIAL: ${{ inputs.hora_inicial }}
-          HORA_FINAL: ${{ inputs.hora_final }}
+          DATA_INICIAL: ${{ github.event.inputs.data_inicial }}
+          DATA_FINAL: ${{ github.event.inputs.data_final }}
+          ENDPOINT: ${{ github.event.inputs.endpoint }}
